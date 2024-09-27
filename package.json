@@ -2,10 +2,12 @@
   "name": "mevem",
   "version": "0.0.1",
   "packageManager": "pnpm@9.5.0",
-  "description": "_description_",
+  "description": "Message Event Emitter",
   "type": "module",
   "keywords": [
-    "pkg-placeholder"
+    "mevem",
+    "event-emitter",
+    "message-eventemitter"
   ],
   "license": "MIT",
   "author": "sunshj",
