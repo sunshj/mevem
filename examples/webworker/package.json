@@ -1,0 +1,23 @@
+{
+  "name": "webworker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "mevem": "workspace:^",
+    "unplugin-vue-router": "^0.10.8",
+    "vue": "^3.4.37",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.2",
+    "vite": "^5.4.1",
+    "vue-tsc": "^2.0.29"
+  }
+}

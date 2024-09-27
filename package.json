@@ -1,0 +1,68 @@
+{
+  "name": "mevem",
+  "version": "0.0.1",
+  "packageManager": "pnpm@9.5.0",
+  "description": "_description_",
+  "type": "module",
+  "keywords": [
+    "pkg-placeholder"
+  ],
+  "license": "MIT",
+  "author": "sunshj",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint . --cache",
+    "lint:fix": "eslint . --fix --cache",
+    "prepublishOnly": "pnpm build",
+    "release": "bumpp && npm publish",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier . --write"
+  },
+  "devDependencies": {
+    "@sunshj/eslint-config": "2.1.2",
+    "@sunshj/prettier-config": "^1.0.0",
+    "@types/node": "^18",
+    "bumpp": "^9.4.1",
+    "eslint": "^9.10.0",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "simple-git-hooks": "^2.11.1",
+    "tsup": "^8.2.4",
+    "tsx": "^4.19.1",
+    "typescript": "5.5.3"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,ts,md,json,yaml}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "prettier": "@sunshj/prettier-config"
+}
