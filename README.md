@@ -5,7 +5,7 @@
 [![bundle][bundle-src]][bundle-href]
 [![JSDocs][jsdocs-src]][jsdocs-href]
 
-mevem (Message Event Emitter)
+mevem (`M`essage `Ev`ent `Em`itter) is a type-safe EventEmitter designed to simplify message events.
 
 ## Install
 
@@ -93,7 +93,7 @@ worker.on('sum', (...numbers) => {
 })
 ```
 
-### type-safe events
+### Type-Safe Events
 
 ```ts
 // client emits
@@ -111,6 +111,22 @@ const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({})
 
 // server side
 const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
+```
+
+### Experimental Support
+
+```js
+const emitter = new MessageEventEmitter({
+  // ...other options
+  experimental: {
+    returnValue: true
+  }
+})
+
+emitter.on('sum', (...numbers) => {
+  const result = numbers.reduce((a, b) => a + b, 0)
+  return result // same as emitter.emit('sum', result)
+})
 ```
 
 <!-- Badges -->
