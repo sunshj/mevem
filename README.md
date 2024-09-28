@@ -16,7 +16,7 @@ npm install mevem
 ## Usages
 
 ```js
-import { MessageEventEmitter } from 'mevem'
+import MessageEventEmitter from 'mevem'
 ```
 
 ### Using WebSocket
@@ -91,6 +91,26 @@ worker.on('sum', (...numbers) => {
   const result = numbers.reduce((acc, cur) => acc + cur, 0)
   worker.emit('sum', result)
 })
+```
+
+### type-safe events
+
+```ts
+// client emits
+type ClientEmitsMap = {
+  sum: (...numbers: number[]) => void
+}
+
+// server emits
+type ServerEmitsMap = {
+  sum: (result: number) => void
+}
+
+// client side
+const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({})
+
+// server side
+const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
 ```
 
 <!-- Badges -->
