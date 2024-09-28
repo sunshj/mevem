@@ -5,7 +5,7 @@
 [![bundle][bundle-src]][bundle-href]
 [![JSDocs][jsdocs-src]][jsdocs-href]
 
-mevem (`M`essage `Ev`ent `Em`itter) is a type-safe EventEmitter designed to simplify message events.
+mevem (<b>M</b>essage <b>Ev</b>ent <b>Em</b>itter) is a type-safe EventEmitter designed to simplify message events.
 
 ## Install
 
