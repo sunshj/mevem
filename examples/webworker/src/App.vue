@@ -16,8 +16,8 @@ import { workerInjectKey, type ClientEventsMap, type WorkerEventsMap } from './u
 const worker = new CalcWorker()
 
 const client = new MessageEventEmitter<ClientEventsMap, WorkerEventsMap>({
-  handle: fn => worker.addEventListener('message', fn),
-  invoke: data => worker.postMessage(data),
+  on: fn => worker.addEventListener('message', fn),
+  post: data => worker.postMessage(data),
   deserialize: ({ data }) => data
 })
 

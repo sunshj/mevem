@@ -26,8 +26,8 @@ import MessageEventEmitter from 'mevem'
 const ws = new WebSocket('ws://...')
 
 const client = new MessageEventEmitter({
-  handle: fn => ws.addEventListener('message', fn),
-  invoke: data => ws.send(data),
+  on: fn => ws.addEventListener('message', fn),
+  post: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
   serialize: JSON.stringify
 })
@@ -47,8 +47,8 @@ const wss = new WebSocketServer()
 
 wss.on('connection', ws => {
   const socket = new MessageEventEmitter({
-    handle: fn => ws.addEventListener('message', fn),
-    invoke: data => ws.send(data),
+    on: fn => ws.addEventListener('message', fn),
+    post: data => ws.send(data),
     deserialize: ({ data }) => JSON.parse(data),
     serialize: JSON.stringify
   })
@@ -67,8 +67,8 @@ wss.on('connection', ws => {
 const worker = new Worker('./worker.js')
 
 const client = new MessageEventEmitter({
-  handle: fn => worker.addEventListener('message', fn),
-  invoke: data => worker.postMessage(data),
+  on: fn => worker.addEventListener('message', fn),
+  post: data => worker.postMessage(data),
   deserialize: ({ data }) => data
 })
 
@@ -82,8 +82,8 @@ client.emit('sum', 1, 2, 3)
 ```js
 // worker.js
 const worker = new MessageEventEmitter({
-  handle: fn => self.addEventListener('message', fn),
-  invoke: data => self.postMessage(data),
+  on: fn => self.addEventListener('message', fn),
+  post: data => self.postMessage(data),
   deserialize: ({ data }) => data
 })
 

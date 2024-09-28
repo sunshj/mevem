@@ -8,8 +8,8 @@ type MessageEventData<T extends DefaultEventsMap, K extends keyof T = keyof T> =
 ]
 
 interface Options {
-  handle: (fn: Fn) => void
-  invoke: (data: any) => void
+  on: (fn: Fn) => void
+  post: (data: any) => void
   serialize?: (v: any) => any
   deserialize?: (v: any) => any
 }
@@ -26,7 +26,7 @@ class MessageEventEmitter<
   constructor(private options: Options) {
     this.options.serialize ??= defaultSerialize
     this.options.deserialize ??= defaultDeserialize
-    this.options.handle(event => this.handleMessage(event))
+    this.options.on(this.handleMessage.bind(this))
   }
 
   private handleMessage(event: MessageEvent<MessageEventData<OnEvents>>) {
@@ -49,7 +49,7 @@ class MessageEventEmitter<
   }
 
   emit<K extends keyof EmitEvents>(type: K, ...args: Parameters<EmitEvents[K]>) {
-    this.options.invoke!(this.options.serialize!([type, ...args]))
+    this.options.post!(this.options.serialize!([type, ...args]))
   }
 
   off<K extends keyof OnEvents>(type: K, listener?: (...args: Parameters<OnEvents[K]>) => void) {

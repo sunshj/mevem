@@ -29,8 +29,8 @@ const wss = new WebSocketServer({ server })
 
 wss.on('connection', ws => {
   const socket = new MessageEventEmitter<ServerEvents, ClientEvents>({
-    handle: fn => ws.addEventListener('message', fn),
-    invoke: data => ws.send(data),
+    on: fn => ws.addEventListener('message', fn),
+    post: data => ws.send(data),
     deserialize: ({ data }) => JSON.parse(data),
     serialize: JSON.stringify
   })
