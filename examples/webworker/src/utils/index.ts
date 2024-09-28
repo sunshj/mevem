@@ -1,4 +1,4 @@
-import type { MessageEventEmitter } from 'mevem'
+import type MessageEventEmitter from 'mevem'
 import type { InjectionKey } from 'vue'
 
 export const workerInjectKey = Symbol() as InjectionKey<

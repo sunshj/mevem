@@ -17,7 +17,7 @@ interface Options {
 const defaultSerialize = (v: any) => v
 const defaultDeserialize = defaultSerialize
 
-export class MessageEventEmitter<
+class MessageEventEmitter<
   EmitEvents extends DefaultEventsMap = DefaultEventsMap,
   OnEvents extends DefaultEventsMap = DefaultEventsMap
 > {
@@ -90,3 +90,5 @@ export class MessageEventEmitter<
     this.listeners.clear()
   }
 }
+
+export default MessageEventEmitter

@@ -1,14 +1,11 @@
 {
   "name": "websocket",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "license": "ISC",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts"
-  },
-  "engines": {
-    "node": ">= 18"
   },
   "dependencies": {
     "mevem": "workspace:^",
@@ -16,5 +13,8 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.12"
+  },
+  "engines": {
+    "node": ">= 18"
   }
 }

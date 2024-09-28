@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { MessageEventEmitter } from 'mevem'
+import MessageEventEmitter from 'mevem'
 import CalcWorker from './calc.worker?worker'
 import { provide } from 'vue'
 import { workerInjectKey, type ClientEventsMap, type WorkerEventsMap } from './utils'

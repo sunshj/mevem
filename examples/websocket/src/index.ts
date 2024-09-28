@@ -1,13 +1,9 @@
+import { randomInt } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
-import { createRequire } from 'node:module'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { MessageEventEmitter } from 'mevem'
+import MessageEventEmitter from 'mevem'
 import { WebSocketServer } from 'ws'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const _require = createRequire(import.meta.url)
 
 const server = createServer(async (req, res) => {
   if (req.url === '/') {
@@ -23,21 +19,13 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.url === '/mevem.js') {
-    const js = await readFile(_require.resolve('mevem/dist/index.browser.js'))
+    const js = await readFile(require.resolve('mevem/dist/index.browser.js'))
     res.writeHead(200, { 'Content-Type': 'application/javascript' })
     res.end(js.toString('utf-8'))
   }
 })
 
 const wss = new WebSocketServer({ server })
-
-type ServerEvents = {
-  sum: (result: number) => void
-}
-
-type ClientEvents = {
-  sum: (...numbers: number[]) => void
-}
 
 wss.on('connection', ws => {
   const socket = new MessageEventEmitter<ServerEvents, ClientEvents>({
@@ -50,6 +38,11 @@ wss.on('connection', ws => {
   socket.on('sum', (...numbers) => {
     const result = numbers.reduce((a, b) => a + b, 0)
     socket.emit('sum', result)
+  })
+
+  socket.on('get-numbers', n => {
+    const result = Array.from({ length: n }, () => randomInt(1, 10))
+    socket.emit('get-numbers', result)
   })
 })
 

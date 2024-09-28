@@ -1,4 +1,4 @@
-import { MessageEventEmitter } from 'mevem'
+import MessageEventEmitter from 'mevem'
 import { randomIn, type ClientEventsMap, type WorkerEventsMap } from './utils'
 
 const worker = new MessageEventEmitter<WorkerEventsMap, ClientEventsMap>({

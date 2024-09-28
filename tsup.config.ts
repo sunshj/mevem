@@ -25,6 +25,6 @@ export default defineConfig([
         js: '.browser.js'
       }
     },
-    globalName: 'mevem'
+    globalName: 'MessageEventEmitter'
   }
 ])
