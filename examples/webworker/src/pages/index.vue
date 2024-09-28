@@ -36,8 +36,8 @@ const cleanUpSumHandler = worker.on('sum', data => {
   result.value = data
 })
 
-console.log('[generate-numbers]', worker.getListenerCount('generate-numbers'))
-console.log('[sum]', worker.getListenerCount('sum'))
+console.log('[generate-numbers]', worker.listenerCount('generate-numbers'))
+console.log('[sum]', worker.listenerCount('sum'))
 
 reset()
 

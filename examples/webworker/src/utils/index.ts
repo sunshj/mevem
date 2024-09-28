@@ -7,8 +7,8 @@ export const workerInjectKey = Symbol() as InjectionKey<
 
 /** client emits */
 export type ClientEventsMap = {
-  sum: (...numbers: number[]) => void
-  'generate-numbers': (count: number) => void
+  sum: (...numbers: number[]) => number
+  'generate-numbers': (count: number) => number[]
 }
 
 /** worker emits */
