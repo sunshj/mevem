@@ -4,11 +4,6 @@ type Fn = (...args: any[]) => void
 
 type DefaultEventsMap = Record<string, Fn>
 
-type MessageEventData<T extends DefaultEventsMap, K extends keyof T = keyof T> = [
-  K,
-  ...Parameters<T[K]>
-]
-
 interface Options {
   /** The function that will be called when a message is received. */
   on?: (fn: Fn) => void
@@ -43,26 +38,25 @@ class MessageEventEmitter<
     this.options = Object.assign<Options, Options>(
       {
         ...defaultOptions,
-        post: data => this.#handleMessage(data)
+        post: data => this.#dispatchEvent(data)
       },
       this.options
     )
-    this.options.on?.(this.#handleMessage.bind(this))
+    this.options.on?.(e => this.#dispatchEvent(e))
   }
 
   #post(type: any, ...args: any[]) {
     this.options.post!(this.options.serialize!([type, ...args]))
   }
 
-  #handleMessage(event: MessageEvent<MessageEventData<OnEvents>>) {
+  #dispatchEvent(event: any) {
     const [type, ...args] = this.options.deserialize!(event)
-    const typeListeners = this.listeners(type)
-    if (typeListeners) {
-      typeListeners.forEach(listener => listener(...args))
-    }
+    this.listeners(type)?.forEach(listener => listener(...args))
   }
 
   #hasReturnValue(listener: Fn) {
+    // ? should also work in arrow functions
+    // ? should be a return statement, not a string
     return listener.toString().includes('return ')
   }
 
@@ -108,12 +102,9 @@ class MessageEventEmitter<
       this.#listeners.delete(type)
       return
     }
-    const typeListeners = this.listeners(type)
-    if (typeListeners) {
-      typeListeners.delete(listener)
-      if (typeListeners.size === 0) {
-        this.#listeners.delete(type)
-      }
+    this.listeners(type)?.delete(listener)
+    if (this.listenerCount(type) === 0) {
+      this.#listeners.delete(type)
     }
   }
 
