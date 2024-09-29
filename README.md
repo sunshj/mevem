@@ -15,8 +15,18 @@ npm install mevem
 
 ## Usages
 
+<!-- eslint-skip -->
+
 ```js
+// ESM
 import MessageEventEmitter from 'mevem'
+
+// CommonJS
+const MessageEventEmitter = require('mevem')
+
+// Browser
+<script src="https://unpkg.com/mevem/dist/index.browser.js"></script>
+
 ```
 
 ### Using WebSocket
