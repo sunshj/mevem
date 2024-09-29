@@ -11,9 +11,9 @@ type MessageEventData<T extends DefaultEventsMap, K extends keyof T = keyof T> =
 
 interface Options {
   /** The function that will be called when a message is received. */
-  on: (fn: Fn) => void
+  on?: (fn: Fn) => void
   /** The function that will be called when a message is sent. */
-  post: (data: any) => void
+  post?: (data: any) => void
   /** The function that will be called to serialize data before sending it. */
   serialize?: (v: any) => any
   /** The function that will be called to deserialize data after receiving it. */
@@ -25,12 +25,8 @@ interface Options {
 }
 
 const defaultOptions: Options = {
-  on: () => {
-    throw new Error('No "on" function provided')
-  },
-  post: () => {
-    throw new Error('No "post" function provided')
-  },
+  on: fn => fn,
+  post: data => data,
   deserialize: v => v,
   serialize: v => v,
   experimental: {
@@ -44,9 +40,18 @@ class MessageEventEmitter<
 > {
   #listeners: Map<keyof OnEvents, Set<Fn>> = new Map()
 
-  constructor(private options: Options) {
-    this.options = Object.assign({}, defaultOptions, this.options)
-    this.options.on(this.#handleMessage.bind(this))
+  constructor(private options: Options = {}) {
+    this.options = Object.assign<Options, Options>(
+      {
+        ...defaultOptions,
+        post: data => {
+          const [type, ...args] = data
+          return this.listeners(type)?.forEach(listener => listener(...args))
+        }
+      },
+      this.options
+    )
+    this.options.on?.(this.#handleMessage.bind(this))
   }
 
   #post(type: any, ...args: any[]) {
