@@ -54,12 +54,6 @@ class MessageEventEmitter<
     this.listeners(type)?.forEach(listener => listener(...args))
   }
 
-  #hasReturnValue(listener: Fn) {
-    // ? should also work in arrow functions
-    // ? should be a return statement, not a string
-    return listener.toString().includes('return ')
-  }
-
   on<K extends keyof OnEvents>(
     type: K,
     listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
@@ -75,7 +69,7 @@ class MessageEventEmitter<
       }
     }
 
-    if (this.#hasReturnValue(listener) && this.options.experimental?.returnValue) {
+    if (this.options.experimental?.returnValue) {
       this.listeners(type)!.add(listenerWithReturnValue)
     } else {
       this.listeners(type)!.add(listener)
