@@ -26,7 +26,6 @@ interface Options {
 
 const defaultOptions: Options = {
   on: fn => fn,
-  post: data => data,
   deserialize: v => v,
   serialize: v => v,
   experimental: {
@@ -44,10 +43,7 @@ class MessageEventEmitter<
     this.options = Object.assign<Options, Options>(
       {
         ...defaultOptions,
-        post: data => {
-          const [type, ...args] = data
-          return this.listeners(type)?.forEach(listener => listener(...args))
-        }
+        post: data => this.#handleMessage(data)
       },
       this.options
     )
