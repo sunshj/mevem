@@ -25,8 +25,12 @@ interface Options {
 }
 
 const defaultOptions: Options = {
-  on: fn => fn,
-  post: data => data,
+  on: () => {
+    throw new Error('No "on" function provided')
+  },
+  post: () => {
+    throw new Error('No "post" function provided')
+  },
   deserialize: v => v,
   serialize: v => v,
   experimental: {
