@@ -29,7 +29,7 @@ const client = new MessageEventEmitter({
   on: fn => ws.addEventListener('message', fn),
   post: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
-  serialize: JSON.stringify
+  serialize: v => JSON.stringify(v)
 })
 
 client.on('sum', result => {
@@ -47,10 +47,10 @@ const wss = new WebSocketServer()
 
 wss.on('connection', ws => {
   const socket = new MessageEventEmitter({
-    on: fn => ws.addEventListener('message', fn),
+    on: fn => ws.on('message', fn),
     post: data => ws.send(data),
-    deserialize: ({ data }) => JSON.parse(data),
-    serialize: JSON.stringify
+    deserialize: v => JSON.parse(v),
+    serialize: v => JSON.stringify(v)
   })
 
   socket.on('sum', (...numbers) => {
