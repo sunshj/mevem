@@ -18,7 +18,10 @@ const worker = new CalcWorker()
 const client = new MessageEventEmitter<ClientEventsMap, WorkerEventsMap>({
   on: fn => worker.addEventListener('message', fn),
   post: data => worker.postMessage(data),
-  deserialize: ({ data }) => data
+  deserialize: ({ data }) => data,
+  experimental: {
+    returnValue: true
+  }
 })
 
 provide(workerInjectKey, client)

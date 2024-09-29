@@ -10,5 +10,6 @@ const worker = inject(workerInjectKey)!
 
 onMounted(() => {
   console.log(worker)
+  console.log(worker.listeners('generate-numbers'))
 })
 </script>

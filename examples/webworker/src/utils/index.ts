@@ -14,9 +14,13 @@ export type ClientEventsMap = {
 /** worker emits */
 export type WorkerEventsMap = {
   sum: (result: number) => void
-  'generate-numbers': (numbers: number[]) => void
+  'generate-numbers': (numbers: number[]) => number
 }
 
 export function randomIn(max: number, min: number) {
   return Math.floor(Math.random() * (max - min) + min)
+}
+
+export function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

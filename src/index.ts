@@ -1,3 +1,5 @@
+type Awaitable<T> = T | PromiseLike<T>
+
 type Fn = (...args: any[]) => void
 
 type DefaultEventsMap = Record<string, Fn>
@@ -22,11 +24,14 @@ interface Options {
   }
 }
 
-const defaultSerialize = (v: any) => v
-const defaultDeserialize = defaultSerialize
-
-const defaultExperimental = {
-  returnValue: false
+const defaultOptions: Options = {
+  on: fn => fn,
+  post: data => data,
+  deserialize: v => v,
+  serialize: v => v,
+  experimental: {
+    returnValue: false
+  }
 }
 
 class MessageEventEmitter<
@@ -36,9 +41,7 @@ class MessageEventEmitter<
   #listeners: Map<keyof OnEvents, Set<Fn>> = new Map()
 
   constructor(private options: Options) {
-    this.options.serialize ??= defaultSerialize
-    this.options.deserialize ??= defaultDeserialize
-    this.options.experimental = Object.assign(defaultExperimental, this.options.experimental)
+    this.options = Object.assign({}, defaultOptions, this.options)
     this.options.on(this.#handleMessage.bind(this))
   }
 
@@ -55,19 +58,19 @@ class MessageEventEmitter<
   }
 
   #hasReturnValue(listener: Fn) {
-    return listener.toString().includes('return')
+    return listener.toString().includes('return ')
   }
 
   on<K extends keyof OnEvents>(
     type: K,
-    listener: (...args: Parameters<OnEvents[K]>) => ReturnType<OnEvents[K]> | void
+    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
   ) {
     if (!this.#listeners.has(type)) {
       this.#listeners.set(type, new Set())
     }
 
-    const listenerWithReturnValue = (...args: Parameters<OnEvents[K]>) => {
-      const returnValue = listener(...args)
+    const listenerWithReturnValue = async (...args: Parameters<OnEvents[K]>) => {
+      const returnValue = await listener(...args)
       if (returnValue !== undefined) {
         this.#post(type, returnValue)
       }
@@ -92,7 +95,10 @@ class MessageEventEmitter<
     this.#post(type, ...args)
   }
 
-  off<K extends keyof OnEvents>(type: K, listener?: (...args: Parameters<OnEvents[K]>) => void) {
+  off<K extends keyof OnEvents>(
+    type: K,
+    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+  ) {
     if (!listener) {
       this.#listeners.delete(type)
       return
@@ -106,7 +112,10 @@ class MessageEventEmitter<
     }
   }
 
-  once<K extends keyof OnEvents>(type: K, listener: (...args: Parameters<OnEvents[K]>) => void) {
+  once<K extends keyof OnEvents>(
+    type: K,
+    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+  ) {
     const onceListener = (...onceArgs: Parameters<OnEvents[K]>) => {
       listener(...onceArgs)
       this.off(type, onceListener)

@@ -12,8 +12,8 @@ const worker = new MessageEventEmitter<WorkerEventsMap, ClientEventsMap>({
 
 worker.on('sum', (...numbers) => {
   const result = numbers.reduce((acc, curr) => acc + curr, 0)
-  worker.emit('sum', result)
-  // return result
+  // worker.emit('sum', result)
+  return result
 })
 
 worker.on('generate-numbers', n => {

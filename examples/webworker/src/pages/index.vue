@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { inject, onBeforeUnmount, ref } from 'vue'
-import { workerInjectKey } from '../utils'
+import { wait, workerInjectKey } from '../utils'
 
 const worker = inject(workerInjectKey)!
 
@@ -26,8 +26,9 @@ function reset() {
   worker.emit('generate-numbers', 4)
 }
 
-function handleGenerateNumbers(data: number[]) {
+async function handleGenerateNumbers(data: number[]) {
   numbers.value = data
+  await wait(100)
 }
 
 worker.on('generate-numbers', handleGenerateNumbers)
