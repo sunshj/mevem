@@ -35,13 +35,16 @@ class MessageEventEmitter<
   #listeners: Map<keyof OnEvents, Set<Fn>> = new Map()
 
   constructor(private options: Options = {}) {
-    this.options = Object.assign<Options, Options>(
-      {
-        ...defaultOptions,
-        post: data => this.#dispatchEvent(data)
-      },
-      this.options
-    )
+    this.options = {
+      ...defaultOptions,
+      ...{ post: data => this.#dispatchEvent(data) },
+      ...options,
+      experimental: {
+        ...defaultOptions.experimental,
+        ...options.experimental
+      }
+    }
+
     this.options.on?.(e => this.#dispatchEvent(e))
   }
 

@@ -22,9 +22,11 @@ function getTime() {
 }
 
 onBeforeMount(() => {
+  console.log('worker: ', worker)
   console.log('[worker] numbersListeners:', worker.listeners('generate-numbers'))
 
   getTime()
+  console.log('emitter: ', emitter)
   console.log('[emitter] timeListeners: ', emitter.listeners('time'))
 })
 </script>

@@ -31,7 +31,7 @@ async function handleGenerateNumbers(data: number[]) {
   await wait(100)
 }
 
-worker.on('generate-numbers', handleGenerateNumbers)
+const cleanUpGenerateNumber = worker.on('generate-numbers', handleGenerateNumbers)
 
 const cleanUpSumHandler = worker.on('sum', data => {
   result.value = data
@@ -44,7 +44,8 @@ reset()
 
 onBeforeUnmount(() => {
   cleanUpSumHandler()
-  worker.off('generate-numbers', handleGenerateNumbers)
+  cleanUpGenerateNumber()
+  // worker.off('generate-numbers', handleGenerateNumbers) // is not working with `experimental.returnValue=true`
 })
 </script>
 

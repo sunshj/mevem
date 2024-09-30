@@ -133,10 +133,13 @@ const emitter = new MessageEventEmitter({
   }
 })
 
-emitter.on('sum', (...numbers) => {
+const cleanUp = emitter.on('sum', (...numbers) => {
   const result = numbers.reduce((a, b) => a + b, 0)
   return result // same as emitter.emit('sum', result)
 })
+
+// cleanUp() should be used to remove the listener instead of emitter.off('sum', fn) when returnValue is true.
+cleanUp()
 ```
 
 <!-- Badges -->
