@@ -2,7 +2,7 @@ type Awaitable<T> = T | PromiseLike<T>
 
 type Fn = (...args: any[]) => void
 
-type DefaultEventsMap = Record<string, Fn>
+type DefaultEventsMap = Record<string | symbol, Fn>
 
 interface Options {
   /** The function that will be called when a message is received. */
@@ -28,7 +28,7 @@ const defaultOptions: Options = {
   }
 }
 
-class MessageEventEmitter<
+export default class MessageEventEmitter<
   EmitEvents extends DefaultEventsMap = DefaultEventsMap,
   OnEvents extends DefaultEventsMap = DefaultEventsMap
 > {
@@ -57,7 +57,7 @@ class MessageEventEmitter<
     this.listeners(type)?.forEach(listener => listener(...args))
   }
 
-  on<K extends keyof OnEvents>(
+  addListener<K extends keyof OnEvents>(
     type: K,
     listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
   ) {
@@ -87,11 +87,18 @@ class MessageEventEmitter<
     }
   }
 
+  on<K extends keyof OnEvents>(
+    type: K,
+    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+  ) {
+    return this.addListener(type, listener)
+  }
+
   emit<K extends keyof EmitEvents>(type: K, ...args: Parameters<EmitEvents[K]>) {
     this.#post(type, ...args)
   }
 
-  off<K extends keyof OnEvents>(
+  removeListener<K extends keyof OnEvents>(
     type: K,
     listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
   ) {
@@ -103,6 +110,13 @@ class MessageEventEmitter<
     if (this.listenerCount(type) === 0) {
       this.#listeners.delete(type)
     }
+  }
+
+  off<K extends keyof OnEvents>(
+    type: K,
+    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+  ) {
+    this.removeListener(type, listener)
   }
 
   once<K extends keyof OnEvents>(
@@ -132,5 +146,3 @@ class MessageEventEmitter<
     this.#listeners.clear()
   }
 }
-
-export default MessageEventEmitter
