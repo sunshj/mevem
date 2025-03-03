@@ -127,10 +127,7 @@ const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
 
 ```js
 const emitter = new MessageEventEmitter({
-  // ...other options
-  experimental: {
-    returnValue: true
-  }
+  experimental_returnValue: true
 })
 
 const cleanUp = emitter.on('sum', (...numbers) => {
