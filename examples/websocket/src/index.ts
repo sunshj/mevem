@@ -5,24 +5,30 @@ import path from 'node:path'
 import MessageEventEmitter from 'mevem'
 import { WebSocketServer } from 'ws'
 
-const server = createServer(async (req, res) => {
-  if (req.url === '/') {
+const emitter = new MessageEventEmitter()
+
+const server = createServer((req, res) => {
+  function send(body: any, status = 200, headers: Record<string, string> = {}) {
+    res.writeHead(status, headers)
+    return res.end(body)
+  }
+
+  emitter.on('/', async () => {
     const html = await readFile(path.join(__dirname, '../public', 'index.html'))
-    res.writeHead(200, { 'Content-Type': 'text/html' })
-    res.end(html.toString('utf-8'))
-  }
+    send(html.toString('utf-8'), 200, { 'Content-Type': 'text/html' })
+  })
 
-  if (req.url === '/main.js') {
+  emitter.on('/main.js', async () => {
     const js = await readFile(path.join(__dirname, '../public', 'main.js'))
-    res.writeHead(200, { 'Content-Type': 'application/javascript' })
-    res.end(js.toString('utf-8'))
-  }
+    send(js.toString('utf-8'), 200, { 'Content-Type': 'application/javascript' })
+  })
 
-  if (req.url === '/mevem.js') {
+  emitter.on('/mevem.js', async () => {
     const js = await readFile(require.resolve('mevem/dist/index.browser.js'))
-    res.writeHead(200, { 'Content-Type': 'application/javascript' })
-    res.end(js.toString('utf-8'))
-  }
+    send(js.toString('utf-8'), 200, { 'Content-Type': 'application/javascript' })
+  })
+
+  emitter.emit(req.url!)
 })
 
 const wss = new WebSocketServer({ server })

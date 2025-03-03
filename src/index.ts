@@ -13,20 +13,17 @@ interface Options {
   serialize?: (v: any) => any
   /** The function that will be called to deserialize data after receiving it. */
   deserialize?: (v: any) => any
-  experimental?: {
-    /** Whether to automatically emit a same type message when a listener returns a value. */
-    returnValue?: boolean
-  }
+
+  /** Whether to automatically emit a same type message when a listener returns a value. */
+  experimental_returnValue?: boolean
 }
 
-const defaultOptions: Options = {
+const defaultOptions = {
   on: fn => fn,
   deserialize: v => v,
   serialize: v => v,
-  experimental: {
-    returnValue: false
-  }
-}
+  experimental_returnValue: false
+} satisfies Options
 
 export default class MessageEventEmitter<
   EmitEvents extends DefaultEventsMap = DefaultEventsMap,
@@ -37,23 +34,19 @@ export default class MessageEventEmitter<
   constructor(private options: Options = {}) {
     this.options = {
       ...defaultOptions,
-      ...{ post: data => this.#dispatchEvent(data) },
-      ...options,
-      experimental: {
-        ...defaultOptions.experimental,
-        ...options.experimental
-      }
+      post: data => this.#dispatchEvent(data),
+      ...options
     }
 
     this.options.on?.(e => this.#dispatchEvent(e))
   }
 
   #post(type: any, ...args: any[]) {
-    this.options.post!(this.options.serialize!([type, ...args]))
+    this.options.post?.(this.options.serialize?.([type, ...args]))
   }
 
   #dispatchEvent(event: any) {
-    const [type, ...args] = this.options.deserialize!(event)
+    const [type, ...args] = this.options.deserialize?.(event) ?? event
     this.listeners(type)?.forEach(listener => listener(...args))
   }
 
@@ -72,10 +65,10 @@ export default class MessageEventEmitter<
       }
     }
 
-    if (this.options.experimental?.returnValue) {
-      this.listeners(type)!.add(listenerWithReturnValue)
+    if (this.options.experimental_returnValue) {
+      this.listeners(type)?.add(listenerWithReturnValue)
     } else {
-      this.listeners(type)!.add(listener)
+      this.listeners(type)?.add(listener)
     }
 
     return () => {

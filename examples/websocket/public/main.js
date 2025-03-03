@@ -29,16 +29,15 @@ const state = new Proxy(
 
 /**
  * @param {Element | null} el
- * @param {string} content
+ * @param {string | number} content
  */
 function render(el, content) {
   if (!el) return
-  el.textContent = content
+  el.textContent = content.toString()
 }
 
 const cleanUpSum = client.on('sum', result => {
-  if (!resultEl) return
-  resultEl.textContent = result.toString()
+  render(resultEl, result)
 })
 
 const cleanUpGetNumbers = client.on('get-numbers', numbers => {

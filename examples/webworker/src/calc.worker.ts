@@ -5,9 +5,7 @@ const worker = new MessageEventEmitter<WorkerEventsMap, ClientEventsMap>({
   on: fn => self.addEventListener('message', fn),
   post: data => self.postMessage(data),
   deserialize: ({ data }) => data,
-  experimental: {
-    returnValue: true
-  }
+  experimental_returnValue: true
 })
 
 worker.on('sum', (...numbers) => {
