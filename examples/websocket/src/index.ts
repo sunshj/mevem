@@ -38,17 +38,21 @@ wss.on('connection', ws => {
     on: fn => ws.addEventListener('message', fn),
     post: data => ws.send(data),
     deserialize: ({ data }) => JSON.parse(data),
-    serialize: JSON.stringify
+    serialize: JSON.stringify,
+    experimental_returnValue: true
   })
 
   socket.on('sum', (...numbers) => {
     const result = numbers.reduce((a, b) => a + b, 0)
-    socket.emit('sum', result)
+    // socket.emit('sum', result)
+
+    return result
   })
 
   socket.on('get-numbers', n => {
     const result = Array.from({ length: n }, () => randomInt(1, 10))
-    socket.emit('get-numbers', result)
+    // socket.emit('get-numbers', result)
+    return result
   })
 })
 

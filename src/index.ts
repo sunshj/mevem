@@ -50,9 +50,9 @@ export default class MessageEventEmitter<
     this.listeners(type)?.forEach(listener => listener(...args))
   }
 
-  addListener<K extends keyof OnEvents>(
+  addListener<K extends keyof OnEvents, E extends keyof EmitEvents>(
     type: K,
-    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<EmitEvents[E]> | void>
   ) {
     if (!this.#listeners.has(type)) {
       this.#listeners.set(type, new Set())
@@ -80,9 +80,9 @@ export default class MessageEventEmitter<
     }
   }
 
-  on<K extends keyof OnEvents>(
+  on<K extends keyof OnEvents, E extends keyof EmitEvents>(
     type: K,
-    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+    listener: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<EmitEvents[E]> | void>
   ) {
     return this.addListener(type, listener)
   }
@@ -91,9 +91,9 @@ export default class MessageEventEmitter<
     this.#post(type, ...args)
   }
 
-  removeListener<K extends keyof OnEvents>(
+  removeListener<K extends keyof OnEvents, E extends keyof EmitEvents>(
     type: K,
-    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<EmitEvents[E]> | void>
   ) {
     if (!listener) {
       this.#listeners.delete(type)
@@ -105,9 +105,9 @@ export default class MessageEventEmitter<
     }
   }
 
-  off<K extends keyof OnEvents>(
+  off<K extends keyof OnEvents, E extends keyof EmitEvents>(
     type: K,
-    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<OnEvents[K]> | void>
+    listener?: (...args: Parameters<OnEvents[K]>) => Awaitable<ReturnType<EmitEvents[E]> | void>
   ) {
     this.removeListener(type, listener)
   }

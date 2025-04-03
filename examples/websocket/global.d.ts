@@ -6,8 +6,8 @@ declare global {
   }
 
   export type ServerEvents = {
-    sum: (result: number) => void
-    'get-numbers': (numbers: number[]) => void
+    sum: (result: number) => number
+    'get-numbers': (numbers: number[]) => number[]
   }
 
   export type ClientEvents = {
