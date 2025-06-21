@@ -5,12 +5,11 @@ import path from 'node:path'
 import MessageEventEmitter from 'mevem'
 import { WebSocketServer } from 'ws'
 
-const emitter = new MessageEventEmitter()
-
 const server = createServer((req, res) => {
+  const emitter = new MessageEventEmitter()
+
   function send(body: any, status = 200, headers: Record<string, string> = {}) {
-    res.writeHead(status, headers)
-    return res.end(body)
+    return res.writeHead(status, headers).end(body)
   }
 
   emitter.on('/', async () => {
@@ -20,6 +19,7 @@ const server = createServer((req, res) => {
 
   emitter.on('/main.js', async () => {
     const js = await readFile(path.join(__dirname, '../public', 'main.js'))
+
     send(js.toString('utf-8'), 200, { 'Content-Type': 'application/javascript' })
   })
 
@@ -38,21 +38,17 @@ wss.on('connection', ws => {
     on: fn => ws.addEventListener('message', fn),
     post: data => ws.send(data),
     deserialize: ({ data }) => JSON.parse(data),
-    serialize: JSON.stringify,
-    experimental_returnValue: true
+    serialize: JSON.stringify
   })
 
   socket.on('sum', (...numbers) => {
     const result = numbers.reduce((a, b) => a + b, 0)
-    // socket.emit('sum', result)
-
-    return result
+    socket.emit('sum', result)
   })
 
   socket.on('get-numbers', n => {
     const result = Array.from({ length: n }, () => randomInt(1, 10))
-    // socket.emit('get-numbers', result)
-    return result
+    socket.emit('get-numbers', result)
   })
 })
 

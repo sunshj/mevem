@@ -13,17 +13,7 @@ interface Options {
   serialize?: (v: any) => any
   /** The function that will be called to deserialize data after receiving it. */
   deserialize?: (v: any) => any
-
-  /** Whether to automatically emit a same type message when a listener returns a value. */
-  experimental_returnValue?: boolean
 }
-
-const defaultOptions = {
-  on: fn => fn,
-  deserialize: v => v,
-  serialize: v => v,
-  experimental_returnValue: false
-} satisfies Options
 
 export default class MessageEventEmitter<
   EmitEvents extends DefaultEventsMap = DefaultEventsMap,
@@ -33,16 +23,14 @@ export default class MessageEventEmitter<
 
   constructor(private options: Options = {}) {
     this.options = {
-      ...defaultOptions,
+      on: fn => fn,
       post: data => this.#dispatchEvent(data),
+      deserialize: v => v,
+      serialize: v => v,
       ...options
     }
 
     this.options.on?.(e => this.#dispatchEvent(e))
-  }
-
-  #post(type: any, ...args: any[]) {
-    this.options.post?.(this.options.serialize?.([type, ...args]))
   }
 
   #dispatchEvent(event: any) {
@@ -58,25 +46,10 @@ export default class MessageEventEmitter<
       this.#listeners.set(type, new Set())
     }
 
-    const listenerWithReturnValue = async (...args: Parameters<OnEvents[K]>) => {
-      const returnValue = await listener(...args)
-      if (returnValue !== undefined) {
-        this.#post(type, returnValue)
-      }
-    }
-
-    if (this.options.experimental_returnValue) {
-      this.listeners(type)?.add(listenerWithReturnValue)
-    } else {
-      this.listeners(type)?.add(listener)
-    }
+    this.listeners(type)?.add(listener)
 
     return () => {
-      if (this.listeners(type)?.has(listenerWithReturnValue)) {
-        this.off(type, listenerWithReturnValue)
-      } else {
-        this.off(type, listener)
-      }
+      this.off(type, listener)
     }
   }
 
@@ -88,7 +61,7 @@ export default class MessageEventEmitter<
   }
 
   emit<K extends keyof EmitEvents>(type: K, ...args: Parameters<EmitEvents[K]>) {
-    this.#post(type, ...args)
+    this.options.post?.(this.options.serialize?.([type, ...args]))
   }
 
   removeListener<K extends keyof OnEvents, E extends keyof EmitEvents>(
