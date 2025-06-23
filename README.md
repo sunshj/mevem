@@ -123,22 +123,6 @@ const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({})
 const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
 ```
 
-### Experimental Support
-
-```js
-const emitter = new MessageEventEmitter({
-  experimental_returnValue: true
-})
-
-const cleanUp = emitter.on('sum', (...numbers) => {
-  const result = numbers.reduce((a, b) => a + b, 0)
-  return result // same as emitter.emit('sum', result)
-})
-
-// cleanUp() should be used to remove the listener instead of emitter.off('sum', fn) when returnValue is true.
-cleanUp()
-```
-
 <!-- Badges -->
 
 [npm-version-src]: https://img.shields.io/npm/v/mevem?style=flat&colorA=080f12&colorB=1fa669
