@@ -1,9 +1,9 @@
 # mevem
 
-[npm version][npm-version-href]
-[npm downloads][npm-downloads-href]
-[bundle][bundle-href]
-[JSDocs][jsdocs-href]
+[![npm version][npm-version-src]][npm-version-href]
+[![npm downloads][npm-downloads-src]][npm-downloads-href]
+[![bundle][bundle-src]][bundle-href]
+[![JSDocs][jsdocs-src]][jsdocs-href]
 
 mevem (<b>M</b>essage <b>Ev</b>ent <b>Em</b>itter) is a type-safe EventEmitter designed to simplify message events.
 
