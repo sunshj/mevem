@@ -1,30 +1,23 @@
 {
   "name": "mevem",
   "version": "0.3.1",
-  "packageManager": "pnpm@9.5.0",
   "description": "A type-safe EventEmitter designed to simplify message events.",
-  "type": "module",
   "keywords": [
-    "mevem",
     "event-emitter",
-    "message-eventemitter"
+    "message-eventemitter",
+    "mevem"
   ],
   "license": "MIT",
   "author": "sunshj",
   "files": [
     "dist"
   ],
+  "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
+  "browser": "./dist/index.browser.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.js"
-    },
-    "./dist/*": "./dist/*"
-  },
   "typesVersions": {
     "*": {
       "*": [
@@ -33,39 +26,46 @@
       ]
     }
   },
-  "sideEffects": false,
-  "browser": "./dist/index.browser.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "lint": "eslint . --cache",
-    "lint:fix": "eslint . --fix --cache",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest",
+    "test:update": "vitest -u",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "prepublishOnly": "pnpm build",
     "release": "bumpp && npm publish",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier . --write"
+    "typecheck": "tsgo --noEmit",
+    "fmt": "oxfmt"
   },
   "devDependencies": {
-    "@sunshj/eslint-config": "2.1.2",
-    "@sunshj/prettier-config": "^1.0.0",
     "@types/node": "^18",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "bumpp": "^9.4.1",
-    "eslint": "^9.10.0",
+    "eslint-plugin-regexp": "3.1.0",
     "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
+    "oxfmt": "0.44.0",
+    "oxlint": "1.59.0",
     "simple-git-hooks": "^2.11.1",
-    "tsup": "^8.2.4",
+    "tsdown": "0.22.4",
     "tsx": "^4.19.1",
-    "typescript": "5.5.3"
+    "typescript": "5.5.3",
+    "vitest": "4.1.10"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
   },
   "lint-staged": {
-    "*.{js,ts,vue,md,json,yaml}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
+    "*": "oxfmt --no-error-on-unmatched-pattern",
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint"
   },
-  "prettier": "@sunshj/prettier-config"
+  "packageManager": "pnpm@9.5.0"
 }

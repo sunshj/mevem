@@ -1,9 +1,9 @@
 # mevem
 
-[![npm version][npm-version-src]][npm-version-href]
-[![npm downloads][npm-downloads-src]][npm-downloads-href]
-[![bundle][bundle-src]][bundle-href]
-[![JSDocs][jsdocs-src]][jsdocs-href]
+[npm version][npm-version-href]
+[npm downloads][npm-downloads-href]
+[bundle][bundle-href]
+[JSDocs][jsdocs-href]
 
 mevem (<b>M</b>essage <b>Ev</b>ent <b>Em</b>itter) is a type-safe EventEmitter designed to simplify message events.
 
@@ -26,7 +26,6 @@ const MessageEventEmitter = require('mevem')
 
 // Browser
 <script src="https://unpkg.com/mevem/dist/index.browser.js"></script>
-
 ```
 
 ### Using WebSocket
@@ -121,6 +120,53 @@ const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({})
 
 // server side
 const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
+```
+
+### Namespaced Events
+
+`MessageEventEmitter.withNamespace` wraps an emitter and exposes each event as
+an object with a consistent API. It is fully decoupled from the core
+string-based API — both styles operate on the same listeners.
+
+Event maps use function-style definitions, same as the core API.
+
+```ts
+import MessageEventEmitter from 'mevem'
+
+type ClientEmitsMap = {
+  sum: (...numbers: number[]) => void
+  'get-numbers': (count: number) => void
+}
+
+type ServerEmitsMap = {
+  sum: (result: number) => void
+  'get-numbers': (numbers: number[]) => void
+}
+
+const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({
+  on: fn => ws.addEventListener('message', fn),
+  post: data => ws.send(data),
+  deserialize: ({ data }) => JSON.parse(data),
+  serialize: JSON.stringify
+})
+
+const events = MessageEventEmitter.withNamespace(client)
+
+// listener parameters are inferred from OnEvents
+events.sum.on(result => {
+  console.log(result) // number
+})
+
+// emit parameters are inferred from EmitEvents
+events.sum.emit(1, 2, 3)
+events['get-numbers'].emit(5)
+
+// consistent per-event API
+const unsubscribe = events.sum.on(listener)
+events.sum.once(listener)
+events.sum.off(listener)
+events.sum.listenerCount()
+events.sum.clear()
 ```
 
 <!-- Badges -->
