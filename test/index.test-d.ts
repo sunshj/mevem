@@ -1,72 +1,117 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import MessageEventEmitter from '../src/index'
+import MessageEventEmitter, { type Call, type Notify, type Push } from '../src/index'
 
-type ClientEmitsMap = {
-  sum: (...numbers: number[]) => void
-  'get-numbers': (count: number) => void
+/** One map for both ends: Call, Notify and Push only differ by direction. */
+type EventsMap = {
+  sum: Call<(...numbers: number[]) => number>
+  'get-numbers': Call<(count: number) => number[]>
+  notify: Notify<(payload: string) => void>
+  news: Push<(item: string) => void>
 }
 
-type ServerEmitsMap = {
-  sum: (result: number) => void
-  'get-numbers': (numbers: number[]) => void
-}
+describe('sender types', () => {
+  const client = new MessageEventEmitter<EventsMap>()
 
-describe('core string API types', () => {
-  const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>()
+  it('emits the client-side events', () => {
+    client.emit('sum', 1, 2, 3)
+    client.emit('get-numbers', 5)
+    client.emit('notify', 'hi')
+    // @ts-expect-error wrong argument type
+    client.emit('get-numbers', 'nope')
+    // @ts-expect-error push events are sent by the server
+    client.emit('news', 'x')
+    // @ts-expect-error unknown event name
+    client.emit('unknown', 1)
+  })
 
-  it('on listener args are inferred from OnEvents', () => {
+  it('listens to the server-side events', () => {
     client.on('sum', result => {
       expectTypeOf(result).toEqualTypeOf<number>()
     })
     client.on('get-numbers', numbers => {
       expectTypeOf(numbers).toEqualTypeOf<number[]>()
     })
+    client.on('news', item => {
+      expectTypeOf(item).toEqualTypeOf<string>()
+    })
+    // @ts-expect-error notify events are received by the server
+    client.on('notify', () => {})
     // @ts-expect-error unknown event name
     client.on('unknown', () => {})
   })
+})
 
-  it('emit args are inferred from EmitEvents', () => {
-    client.emit('sum', 1, 2, 3)
-    client.emit('get-numbers', 5)
+describe('receiver types', () => {
+  const server = MessageEventEmitter.createReceiver<EventsMap>()
+
+  it('is equivalent to passing the side as a type argument', () => {
+    expectTypeOf(server).toEqualTypeOf<MessageEventEmitter<EventsMap, 'receiver'>>()
+  })
+
+  it('listens to the client-side events', () => {
+    server.on('sum', (...numbers) => {
+      expectTypeOf(numbers).toEqualTypeOf<number[]>()
+    })
+    server.on('get-numbers', count => {
+      expectTypeOf(count).toEqualTypeOf<number>()
+    })
+    server.on('notify', payload => {
+      expectTypeOf(payload).toEqualTypeOf<string>()
+    })
+    // @ts-expect-error push events are received by the client
+    server.on('news', () => {})
+  })
+
+  it('emits the server-side events', () => {
+    server.emit('sum', 6)
+    server.emit('get-numbers', [0, 1, 2])
+    server.emit('news', 'hello')
     // @ts-expect-error wrong argument type
-    client.emit('get-numbers', 'nope')
-    // @ts-expect-error unknown event name
-    client.emit('unknown', 1)
+    server.emit('sum', 'nope')
+    // @ts-expect-error notify events have no reply
+    server.emit('notify')
+    // @ts-expect-error the client-side arguments are not what a receiver sends
+    server.emit('get-numbers', 5)
   })
 })
 
-describe('namespace API types', () => {
-  const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>()
-  const events = MessageEventEmitter.withNamespace(client)
+describe('per-event handles', () => {
+  it('sender side', () => {
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter<EventsMap>())
 
-  it('listener args are inferred from OnEvents', () => {
     events.sum.on(result => {
       expectTypeOf(result).toEqualTypeOf<number>()
     })
-    events.sum.once(result => {
-      expectTypeOf(result).toEqualTypeOf<number>()
-    })
-    events['get-numbers'].on(numbers => {
+    events['get-numbers'].once(numbers => {
       expectTypeOf(numbers).toEqualTypeOf<number[]>()
     })
-  })
+    events.news.on(item => {
+      expectTypeOf(item).toEqualTypeOf<string>()
+    })
 
-  it('emit args are inferred from EmitEvents', () => {
     expectTypeOf(events.sum.emit).parameters.toEqualTypeOf<number[]>()
     expectTypeOf(events['get-numbers'].emit).parameters.toEqualTypeOf<[count: number]>()
-    // @ts-expect-error wrong argument type
-    events['get-numbers'].emit('nope')
+    // @ts-expect-error push events are sent by the server
+    events.news.emit('x')
+
+    expectTypeOf(events.sum.on(() => {})).toEqualTypeOf<() => void>()
+    expectTypeOf(events.sum.once(() => {})).toEqualTypeOf<() => void>()
   })
 
-  it('on returns an unsubscribe function', () => {
-    expectTypeOf(events.sum.on(() => {})).toEqualTypeOf<() => void>()
+  it('receiver side', () => {
+    const events = MessageEventEmitter.createNamespace(MessageEventEmitter.createReceiver<EventsMap>())
+
+    events.sum.on((...numbers) => {
+      expectTypeOf(numbers).toEqualTypeOf<number[]>()
+    })
+
+    expectTypeOf(events.sum.emit).parameters.toEqualTypeOf<[number]>()
+    expectTypeOf(events.news.emit).parameters.toEqualTypeOf<[item: string]>()
   })
 
   it('data-style event maps are not supported', () => {
     type DataEvents = { join: { room: string } }
-    const dataEvents = MessageEventEmitter.withNamespace<DataEvents, DataEvents>(
-      new MessageEventEmitter()
-    )
+    const dataEvents = MessageEventEmitter.createNamespace(new MessageEventEmitter<DataEvents>())
 
     expectTypeOf(dataEvents.join.emit).parameters.toEqualTypeOf<never>()
     // @ts-expect-error data-style values are not callable events

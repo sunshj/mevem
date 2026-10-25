@@ -1,28 +1,25 @@
 import { describe, expect, it, vi } from 'vitest'
-import MessageEventEmitter from '../src/index'
+import MessageEventEmitter, { type Call, type Notify, type Push } from '../src/index'
 
-type ClientEmitsMap = {
-  sum: (...numbers: number[]) => void
-  'get-numbers': (count: number) => void
-}
-
-type ServerEmitsMap = {
-  sum: (result: number) => void
-  'get-numbers': (numbers: number[]) => void
+type EventsMap = {
+  sum: Call<(...numbers: number[]) => number>
+  'get-numbers': Call<(count: number) => number[]>
+  notify: Notify<(payload: string) => void>
+  news: Push<(item: string) => void>
 }
 
 function createPair() {
   const clientHandlers: Array<(data: any) => void> = []
   const serverHandlers: Array<(data: any) => void> = []
 
-  const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({
+  const client = MessageEventEmitter.createSender<EventsMap>({
     on: fn => clientHandlers.push(fn),
     post: data => serverHandlers.forEach(fn => fn(data)),
     serialize: JSON.stringify,
     deserialize: JSON.parse
   })
 
-  const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({
+  const server = MessageEventEmitter.createReceiver<EventsMap>({
     on: fn => serverHandlers.push(fn),
     post: data => clientHandlers.forEach(fn => fn(data)),
     serialize: JSON.stringify,
@@ -59,6 +56,19 @@ describe('MessageEventEmitter', () => {
     expect(results).toEqual([6])
   })
 
+  it('supports one-way events in both directions', () => {
+    const { client, server } = createPair()
+    const received: string[] = []
+
+    server.on('notify', payload => received.push(`server:${payload}`))
+    client.on('news', item => received.push(`client:${item}`))
+
+    client.emit('notify', 'hi')
+    server.emit('news', 'yo')
+
+    expect(received).toEqual(['server:hi', 'client:yo'])
+  })
+
   it('on returns an unsubscribe function', () => {
     const emitter = new MessageEventEmitter()
     const fn = vi.fn()
@@ -78,6 +88,40 @@ describe('MessageEventEmitter', () => {
     emitter.emit('foo', 2)
     expect(fn).toHaveBeenCalledTimes(1)
     expect(fn).toHaveBeenCalledWith(1)
+  })
+
+  it('once returns an unsubscribe function', () => {
+    const emitter = new MessageEventEmitter()
+    const fn = vi.fn()
+    const unsubscribe = emitter.once('foo', fn)
+
+    unsubscribe()
+    emitter.emit('foo')
+    expect(fn).not.toHaveBeenCalled()
+    expect(emitter.listenerCount('foo')).toBe(0)
+  })
+
+  it('a throwing once listener is still removed', () => {
+    const emitter = new MessageEventEmitter()
+    const fn = vi.fn(() => {
+      throw new Error('boom')
+    })
+    emitter.once('foo', fn)
+
+    expect(() => emitter.emit('foo')).toThrow('boom')
+    expect(emitter.listenerCount('foo')).toBe(0)
+  })
+
+  it('a re-entrant once listener fires only once', () => {
+    const emitter = new MessageEventEmitter()
+    const fn = vi.fn(() => {
+      emitter.emit('foo')
+    })
+    emitter.once('foo', fn)
+
+    emitter.emit('foo')
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(emitter.listenerCount('foo')).toBe(0)
   })
 
   it('off removes a specific listener', () => {
@@ -132,10 +176,10 @@ describe('MessageEventEmitter', () => {
   })
 })
 
-describe('withNamespace', () => {
+describe('createNamespace', () => {
   it('shares listeners with the core string API', () => {
     const emitter = new MessageEventEmitter()
-    const events = MessageEventEmitter.withNamespace(emitter)
+    const events = MessageEventEmitter.createNamespace(emitter)
     const viaNamespace = vi.fn()
     const viaString = vi.fn()
 
@@ -153,8 +197,8 @@ describe('withNamespace', () => {
 
   it('works across a bridged client/server pair', () => {
     const { client, server } = createPair()
-    const clientEvents = MessageEventEmitter.withNamespace(client)
-    const serverEvents = MessageEventEmitter.withNamespace(server)
+    const clientEvents = MessageEventEmitter.createNamespace(client)
+    const serverEvents = MessageEventEmitter.createNamespace(server)
     const results: number[][] = []
 
     serverEvents['get-numbers'].on(count => {
@@ -169,7 +213,7 @@ describe('withNamespace', () => {
   })
 
   it('on returns an unsubscribe function', () => {
-    const events = MessageEventEmitter.withNamespace(new MessageEventEmitter())
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
     const fn = vi.fn()
     const unsubscribe = events.foo.on(fn)
 
@@ -179,7 +223,7 @@ describe('withNamespace', () => {
   })
 
   it('once fires only once', () => {
-    const events = MessageEventEmitter.withNamespace(new MessageEventEmitter())
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
     const fn = vi.fn()
     events.foo.once(fn)
 
@@ -188,8 +232,8 @@ describe('withNamespace', () => {
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
-  it('off removes a specific listener, clear removes all', () => {
-    const events = MessageEventEmitter.withNamespace(new MessageEventEmitter())
+  it('off removes a specific listener, off() removes them all', () => {
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
     const a = vi.fn()
     const b = vi.fn()
     events.foo.on(a)
@@ -199,7 +243,7 @@ describe('withNamespace', () => {
     events.foo.off(a)
     expect(events.foo.listenerCount()).toBe(1)
 
-    events.foo.clear()
+    events.foo.off()
     expect(events.foo.listenerCount()).toBe(0)
     events.foo.emit()
     expect(a).not.toHaveBeenCalled()
@@ -207,7 +251,7 @@ describe('withNamespace', () => {
   })
 
   it('supports symbol event names', () => {
-    const events = MessageEventEmitter.withNamespace(new MessageEventEmitter())
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
     const sym = Symbol('sym')
     const fn = vi.fn()
 
@@ -217,17 +261,31 @@ describe('withNamespace', () => {
   })
 
   it('caches one event object per key', () => {
-    const events = MessageEventEmitter.withNamespace(new MessageEventEmitter())
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
     expect(events.foo).toBe(events.foo)
     expect(events.foo).not.toBe(events.bar)
   })
 
   it('does not modify the emitter instance', () => {
     const emitter = new MessageEventEmitter()
-    const events = MessageEventEmitter.withNamespace(emitter)
+    const events = MessageEventEmitter.createNamespace(emitter)
 
     events.foo.on(() => {})
     expect('foo' in emitter).toBe(false)
     expect(emitter.listenerCount('foo')).toBe(1)
+  })
+
+  it('returns one namespace per emitter', () => {
+    const a = new MessageEventEmitter()
+    const b = new MessageEventEmitter()
+
+    expect(MessageEventEmitter.createNamespace(a)).toBe(MessageEventEmitter.createNamespace(a))
+    expect(MessageEventEmitter.createNamespace(a)).not.toBe(MessageEventEmitter.createNamespace(b))
+  })
+
+  it('is not thenable', async () => {
+    const events = MessageEventEmitter.createNamespace(new MessageEventEmitter())
+
+    await expect(Promise.resolve(events)).resolves.toBe(events)
   })
 })

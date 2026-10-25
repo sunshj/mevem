@@ -104,70 +104,112 @@ worker.on('sum', (...numbers) => {
 
 ### Type-Safe Events
 
-```ts
-// client emits
-type ClientEmitsMap = {
-  sum: (...numbers: number[]) => void
-}
+Define the events **once** and share the same map between both ends. Each shape
+takes a single function signature and declares a direction:
 
-// server emits
-type ServerEmitsMap = {
-  sum: (result: number) => void
-}
-
-// client side
-const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({})
-
-// server side
-const server = new MessageEventEmitter<ServerEmitsMap, ClientEmitsMap>({})
-```
-
-### Namespaced Events
-
-`MessageEventEmitter.withNamespace` wraps an emitter and exposes each event as
-an object with a consistent API. It is fully decoupled from the core
-string-based API — both styles operate on the same listeners.
-
-Event maps use function-style definitions, same as the core API.
+| Shape       | Signature means                                           | Who emits | Who listens |
+| ----------- | --------------------------------------------------------- | --------- | ----------- |
+| `Call<F>`   | client sends `F`'s arguments, server replies `F`'s return | both      | both        |
+| `Notify<F>` | client sends `F`'s arguments                              | client    | server      |
+| `Push<F>`   | server sends `F`'s arguments                              | server    | client      |
 
 ```ts
-import MessageEventEmitter from 'mevem'
+import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
 
-type ClientEmitsMap = {
-  sum: (...numbers: number[]) => void
-  'get-numbers': (count: number) => void
+type EventsMap = {
+  sum: Call<(...numbers: number[]) => number>
+  'get-numbers': Call<(count: number) => number[]>
+  notify: Notify<(payload: string) => void>
+  news: Push<(item: string) => void>
 }
 
-type ServerEmitsMap = {
-  sum: (result: number) => void
-  'get-numbers': (numbers: number[]) => void
-}
-
-const client = new MessageEventEmitter<ClientEmitsMap, ServerEmitsMap>({
+// client: sends the client-side events, listens for the server ones
+const client = MessageEventEmitter.createSender<EventsMap>({
   on: fn => ws.addEventListener('message', fn),
   post: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
   serialize: JSON.stringify
 })
 
-const events = MessageEventEmitter.withNamespace(client)
+// server: the mirror image, same map
+const server = MessageEventEmitter.createReceiver<EventsMap>({
+  on: fn => ws.on('message', fn),
+  post: data => ws.send(data),
+  deserialize: v => JSON.parse(v),
+  serialize: JSON.stringify
+})
+```
 
-// listener parameters are inferred from OnEvents
+Each end only gets the halves it is allowed to use:
+
+```ts
+// client
+client.emit('sum', 1, 2, 3) // ✔
+client.on('sum', result => {}) // result: number
+client.emit('notify', 'hi') // ✔ one-way to the server
+client.on('news', item => {}) // item: string
+client.emit('news', 'x') // ✘ Push events are sent by the server
+
+// server
+server.on('sum', (...numbers) => {}) // numbers: number[]
+server.emit('sum', 6) // ✔
+server.emit('news', 'yo') // ✔ one-way to the client
+server.on('notify', payload => {}) // payload: string
+server.emit('notify') // ✘ Notify events have no answer
+```
+
+A `Call` reply is a single value — `F`'s return type. To send several fields
+back, return an object (or destructure a tuple on the listener side).
+
+`MessageEventEmitter.createSender<EventsMap>(...)` is the same as
+`new MessageEventEmitter<EventsMap>()`, and `receiver` is the same as
+`new MessageEventEmitter<EventsMap, 'receiver'>()`.
+
+### Namespaced Events
+
+`MessageEventEmitter.createNamespace` wraps an emitter and exposes every event as
+an object with a consistent API. It is fully decoupled from the string-based API
+— both styles operate on the same listeners, and the result is cached per emitter.
+
+Event maps use the same `Call` / `Notify` / `Push` definitions as the core API.
+
+```ts
+import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
+
+type EventsMap = {
+  sum: Call<(...numbers: number[]) => number>
+  'get-numbers': Call<(count: number) => number[]>
+  notify: Notify<(payload: string) => void>
+  news: Push<(item: string) => void>
+}
+
+const client = MessageEventEmitter.createSender<EventsMap>({
+  on: fn => ws.addEventListener('message', fn),
+  post: data => ws.send(data),
+  deserialize: ({ data }) => JSON.parse(data),
+  serialize: JSON.stringify
+})
+
+const events = MessageEventEmitter.createNamespace(client)
+
 events.sum.on(result => {
   console.log(result) // number
 })
 
-// emit parameters are inferred from EmitEvents
 events.sum.emit(1, 2, 3)
 events['get-numbers'].emit(5)
+events.notify.emit('hi')
 
 // consistent per-event API
 const unsubscribe = events.sum.on(listener)
-events.sum.once(listener)
+const cancelOnce = events.sum.once(listener)
 events.sum.off(listener)
+events.sum.off() // drop every listener of that event
 events.sum.listenerCount()
-events.sum.clear()
 ```
+
+Events this end never sends or receives are still present, but typed with
+`never` arguments — calling them is a compile error, same as the string API.
 
 <!-- Badges -->
 
