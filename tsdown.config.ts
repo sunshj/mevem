@@ -1,23 +1,26 @@
-import { defineConfig } from 'tsdown'
+import { defineConfig, type UserConfig } from 'tsdown'
+
+const sharedConfig: UserConfig = {
+  entry: ['src/index.ts'],
+  dts: false,
+  clean: true,
+  fixedExtension: false,
+  globalName: 'MessageEventEmitter'
+}
 
 export default defineConfig([
   {
-    entry: ['src/index.ts'],
+    ...sharedConfig,
     format: 'esm',
-    dts: true,
-    outExtensions: () => ({ js: '.js', dts: '.d.ts' })
+    dts: true
   },
   {
-    entry: ['src/index.ts'],
-    format: 'cjs',
-    dts: false,
-    outExtensions: () => ({ js: '.cjs' })
+    ...sharedConfig,
+    format: 'cjs'
   },
   {
-    entry: ['src/index.ts'],
+    ...sharedConfig,
     format: 'iife',
-    dts: false,
-    globalName: 'MessageEventEmitter',
     outputOptions: {
       entryFileNames: 'index.browser.js'
     }
