@@ -6,79 +6,78 @@ type IsAny<T> = 0 extends 1 & T ? true : false
 
 type ReplyOf<F extends Fn> = IsAny<ReturnType<F>> extends true ? any[] : [ReturnType<F>] extends [void] ? [] : [ReturnType<F>]
 
-/** Client sends the arguments, server replies with the return value. */
+/** Publisher publishes the arguments, subscriber replies with the return value. */
 export type Call<F extends Fn> = {
-  readonly send: Parameters<F>
-  readonly recv: ReplyOf<F>
+  readonly _pub: Parameters<F>
+  readonly _sub: ReplyOf<F>
 }
 
-/** Client → server, no reply. */
-export type Notify<F extends Fn> = {
-  readonly send: Parameters<F>
-}
-
-/** Server → client, no reply. */
+/** Publisher → subscriber, no reply. */
 export type Push<F extends Fn> = {
-  readonly recv: Parameters<F>
+  readonly _pub: Parameters<F>
 }
 
-/** Which end of the event map an emitter is. */
-export type EventSide = 'sender' | 'receiver'
+/** Subscriber → publisher, no reply. */
+export type Notify<F extends Fn> = {
+  readonly _sub: Parameters<F>
+}
+
+/** Which end of the map an emitter is; the map is written from the publisher's side. */
+export type EventSide = 'publisher' | 'subscriber'
 
 type DefaultEventsMap = Record<EventName, Call<Fn>>
 
-/** Flattens a type so IDE hover shows the resolved members. */
-type Prettify<T> = { [K in keyof T]: T[K] } & {}
+type PublishOf<Event> = Event extends { readonly _pub: infer Args extends any[] } ? Args : never
 
-type SendOf<Event> = Event extends { readonly send: infer Args extends any[] } ? Args : never
+type SubscribeOf<Event> = Event extends { readonly _sub: infer Args extends any[] } ? Args : never
 
-type RecvOf<Event> = Event extends { readonly recv: infer Args extends any[] } ? Args : never
+type EmitArgs<Event, Side extends EventSide> = [Side] extends ['publisher'] ? PublishOf<Event> : SubscribeOf<Event>
 
-type SentArgs<Event, Side extends EventSide> = [Side] extends ['sender'] ? SendOf<Event> : RecvOf<Event>
+type ListenerArgs<Event, Side extends EventSide> = [Side] extends ['publisher'] ? SubscribeOf<Event> : PublishOf<Event>
 
-type ReceivedArgs<Event, Side extends EventSide> = [Side] extends ['sender'] ? RecvOf<Event> : SendOf<Event>
-
-/** `never` for the events this end is not allowed to send / receive. */
-type SentKeys<Events, Side extends EventSide> = {
-  [K in keyof Events]: [SentArgs<Events[K], Side>] extends [never] ? never : K
+/** `never` for the events this end cannot emit / listen to. */
+type EmitKeys<Events, Side extends EventSide> = {
+  [K in keyof Events]: [EmitArgs<Events[K], Side>] extends [never] ? never : K
 }[keyof Events]
 
-type ReceivedKeys<Events, Side extends EventSide> = {
-  [K in keyof Events]: [ReceivedArgs<Events[K], Side>] extends [never] ? never : K
+type ListenerKeys<Events, Side extends EventSide> = {
+  [K in keyof Events]: [ListenerArgs<Events[K], Side>] extends [never] ? never : K
 }[keyof Events]
 
 export interface Options {
-  /** The function that will be called when a message is received. */
-  on?: (fn: Fn) => void
-  /** The function that will be called when a message is sent. */
-  post?: (data: any) => void
+  /** Subscribes to the transport: calls `fn` for every incoming message. */
+  subscribe?: (fn: Fn) => void
+  /** Sends a message over the transport. */
+  publish?: (data: any) => void
   /** The function that will be called to serialize data before sending it. */
   serialize?: (v: any) => any
   /** The function that will be called to deserialize data after receiving it. */
   deserialize?: (v: any) => any
 }
 
-class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends EventSide = 'sender'> {
+class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends EventSide = 'publisher'> {
   #listeners: Map<keyof Events, Set<Fn>> = new Map()
 
   constructor(private options: Options = {}) {
     this.options = {
-      on: fn => fn,
-      post: data => this.#dispatchEvent(data),
+      subscribe: fn => fn,
+      publish: data => this.#dispatchEvent(data),
       deserialize: v => v,
       serialize: v => v,
       ...options
     }
 
-    this.options.on?.(e => this.#dispatchEvent(e))
+    this.options.subscribe?.(e => this.#dispatchEvent(e))
   }
 
-  static createSender<Events extends object>(options?: Options) {
-    return new MessageEventEmitter<Events, 'sender'>(options)
+  /** Owns the `publish` half of the map: it publishes `Call` and `Push` events. */
+  static createPublisher<Events extends object>(options?: Options) {
+    return new MessageEventEmitter<Events, 'publisher'>(options)
   }
 
-  static createReceiver<Events extends object>(options?: Options) {
-    return new MessageEventEmitter<Events, 'receiver'>(options)
+  /** The mirror end: it answers `Call`, receives `Push`, and notifies back with `Notify`. */
+  static createSubscriber<Events extends object>(options?: Options) {
+    return new MessageEventEmitter<Events, 'subscriber'>(options)
   }
 
   /** Exposes every event as an object, backed by the same listeners. */
@@ -97,9 +96,9 @@ class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends
 
         if (!cache.has(key)) {
           const event: MessageEvent<any, any> = {
-            on: listener => emitter.on(key as ReceivedKeys<Events, Side>, listener),
-            once: listener => emitter.once(key as ReceivedKeys<Events, Side>, listener),
-            off: listener => emitter.off(key as ReceivedKeys<Events, Side>, listener),
+            on: listener => emitter.on(key as ListenerKeys<Events, Side>, listener),
+            once: listener => emitter.once(key as ListenerKeys<Events, Side>, listener),
+            off: listener => emitter.off(key as ListenerKeys<Events, Side>, listener),
             emit: (...args) => (emitter.emit as Fn)(key, ...args),
             listenerCount: () => emitter.listenerCount(key as keyof Events)
           }
@@ -121,7 +120,7 @@ class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends
     this.listeners(type as keyof Events)?.forEach(listener => listener(...args))
   }
 
-  on<K extends ReceivedKeys<Events, Side>>(type: K, listener: (...args: ReceivedArgs<Events[K], Side>) => unknown) {
+  on<K extends ListenerKeys<Events, Side>>(type: K, listener: (...args: ListenerArgs<Events[K], Side>) => unknown) {
     if (!this.#listeners.has(type)) {
       this.#listeners.set(type, new Set())
     }
@@ -133,11 +132,11 @@ class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends
     }
   }
 
-  emit<K extends SentKeys<Events, Side>>(type: K, ...args: SentArgs<Events[K], Side>) {
-    this.options.post?.(this.options.serialize?.([type, ...args]))
+  emit<K extends EmitKeys<Events, Side>>(type: K, ...args: EmitArgs<Events[K], Side>) {
+    this.options.publish?.(this.options.serialize?.([type, ...args]))
   }
 
-  off<K extends ReceivedKeys<Events, Side>>(type: K, listener?: (...args: ReceivedArgs<Events[K], Side>) => unknown) {
+  off<K extends ListenerKeys<Events, Side>>(type: K, listener?: (...args: ListenerArgs<Events[K], Side>) => unknown) {
     if (!listener) {
       this.#listeners.delete(type)
       return
@@ -148,8 +147,8 @@ class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends
     }
   }
 
-  once<K extends ReceivedKeys<Events, Side>>(type: K, listener: (...args: ReceivedArgs<Events[K], Side>) => unknown) {
-    const onceListener = (...args: ReceivedArgs<Events[K], Side>) => {
+  once<K extends ListenerKeys<Events, Side>>(type: K, listener: (...args: ListenerArgs<Events[K], Side>) => unknown) {
+    const onceListener = (...args: ListenerArgs<Events[K], Side>) => {
       // Remove first: a throwing or re-entrant listener must not fire twice.
       this.off(type, onceListener)
       listener(...args)
@@ -177,11 +176,11 @@ class MessageEventEmitter<Events extends object = DefaultEventsMap, Side extends
 
 const namespaces = new WeakMap<object, NamespacedEvents<any, any>>()
 
-interface MessageEvent<Event, Side extends EventSide = 'sender'> {
-  on: (listener: (...args: ReceivedArgs<Event, Side>) => unknown) => () => void
-  once: (listener: (...args: ReceivedArgs<Event, Side>) => unknown) => () => void
-  off: (listener?: (...args: ReceivedArgs<Event, Side>) => unknown) => void
-  emit: (...args: SentArgs<Event, Side>) => void
+interface MessageEvent<Event, Side extends EventSide = 'publisher'> {
+  on: (listener: (...args: ListenerArgs<Event, Side>) => unknown) => () => void
+  once: (listener: (...args: ListenerArgs<Event, Side>) => unknown) => () => void
+  off: (listener?: (...args: ListenerArgs<Event, Side>) => unknown) => void
+  emit: (...args: EmitArgs<Event, Side>) => void
   listenerCount: () => number
 }
 
@@ -189,8 +188,8 @@ interface MessageEvent<Event, Side extends EventSide = 'sender'> {
  * Homomorphic (`[K in keyof Events]`) so IDE "Go to Definition" still lands on
  * the original event declaration.
  */
-export type NamespacedEvents<Events extends object, Side extends EventSide = 'sender'> = {
-  readonly [K in keyof Events]: Prettify<MessageEvent<Events[K], Side>>
+export type NamespacedEvents<Events extends object, Side extends EventSide = 'publisher'> = {
+  readonly [K in keyof Events]: MessageEvent<Events[K], Side>
 }
 
 export default MessageEventEmitter

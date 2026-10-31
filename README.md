@@ -35,8 +35,8 @@ const MessageEventEmitter = require('mevem')
 const ws = new WebSocket('ws://...')
 
 const client = new MessageEventEmitter({
-  on: fn => ws.addEventListener('message', fn),
-  post: data => ws.send(data),
+  subscribe: fn => ws.addEventListener('message', fn),
+  publish: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
   serialize: v => JSON.stringify(v)
 })
@@ -56,8 +56,8 @@ const wss = new WebSocketServer()
 
 wss.on('connection', ws => {
   const socket = new MessageEventEmitter({
-    on: fn => ws.on('message', fn),
-    post: data => ws.send(data),
+    subscribe: fn => ws.on('message', fn),
+    publish: data => ws.send(data),
     deserialize: v => JSON.parse(v),
     serialize: v => JSON.stringify(v)
   })
@@ -76,8 +76,8 @@ wss.on('connection', ws => {
 const worker = new Worker('./worker.js')
 
 const client = new MessageEventEmitter({
-  on: fn => worker.addEventListener('message', fn),
-  post: data => worker.postMessage(data),
+  subscribe: fn => worker.addEventListener('message', fn),
+  publish: data => worker.postMessage(data),
   deserialize: ({ data }) => data
 })
 
@@ -91,8 +91,8 @@ client.emit('sum', 1, 2, 3)
 ```js
 // worker.js
 const worker = new MessageEventEmitter({
-  on: fn => self.addEventListener('message', fn),
-  post: data => self.postMessage(data),
+  subscribe: fn => self.addEventListener('message', fn),
+  publish: data => self.postMessage(data),
   deserialize: ({ data }) => data
 })
 
@@ -105,13 +105,14 @@ worker.on('sum', (...numbers) => {
 ### Type-Safe Events
 
 Define the events **once** and share the same map between both ends. Each shape
-takes a single function signature and declares a direction:
+takes a single function signature and declares a direction, written from the
+publisher's side:
 
-| Shape       | Signature means                                           | Who emits | Who listens |
-| ----------- | --------------------------------------------------------- | --------- | ----------- |
-| `Call<F>`   | client sends `F`'s arguments, server replies `F`'s return | both      | both        |
-| `Notify<F>` | client sends `F`'s arguments                              | client    | server      |
-| `Push<F>`   | server sends `F`'s arguments                              | server    | client      |
+| Shape       | Signature means                                                  | Who emits  | Who listens |
+| ----------- | ---------------------------------------------------------------- | ---------- | ----------- |
+| `Call<F>`   | publisher sends `F`'s arguments, subscriber replies `F`'s return | both       | both        |
+| `Push<F>`   | publisher sends `F`'s arguments                                  | publisher  | subscriber  |
+| `Notify<F>` | subscriber sends `F`'s arguments                                 | subscriber | publisher   |
 
 ```ts
 import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
@@ -119,22 +120,22 @@ import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
 type EventsMap = {
   sum: Call<(...numbers: number[]) => number>
   'get-numbers': Call<(count: number) => number[]>
-  notify: Notify<(payload: string) => void>
   news: Push<(item: string) => void>
+  notify: Notify<(payload: string) => void>
 }
 
-// client: sends the client-side events, listens for the server ones
-const client = MessageEventEmitter.createSender<EventsMap>({
-  on: fn => ws.addEventListener('message', fn),
-  post: data => ws.send(data),
+// the ws client is the publisher: it sends the request half of every event
+const client = MessageEventEmitter.createPublisher<EventsMap>({
+  subscribe: fn => ws.addEventListener('message', fn),
+  publish: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
   serialize: JSON.stringify
 })
 
-// server: the mirror image, same map
-const server = MessageEventEmitter.createReceiver<EventsMap>({
-  on: fn => ws.on('message', fn),
-  post: data => ws.send(data),
+// the ws server is the mirror image, from the same map
+const server = MessageEventEmitter.createSubscriber<EventsMap>({
+  subscribe: fn => ws.on('message', fn),
+  publish: data => ws.send(data),
   deserialize: v => JSON.parse(v),
   serialize: JSON.stringify
 })
@@ -143,27 +144,27 @@ const server = MessageEventEmitter.createReceiver<EventsMap>({
 Each end only gets the halves it is allowed to use:
 
 ```ts
-// client
+// client (publisher)
 client.emit('sum', 1, 2, 3) // ✔
 client.on('sum', result => {}) // result: number
-client.emit('notify', 'hi') // ✔ one-way to the server
-client.on('news', item => {}) // item: string
-client.emit('news', 'x') // ✘ Push events are sent by the server
+client.emit('news', 'x') // ✔ one-way to the subscriber
+client.on('notify', payload => {}) // payload: string
+client.emit('notify', 'hi') // ✘ Notify events are sent by the subscriber
 
-// server
+// server (subscriber)
 server.on('sum', (...numbers) => {}) // numbers: number[]
 server.emit('sum', 6) // ✔
-server.emit('news', 'yo') // ✔ one-way to the client
-server.on('notify', payload => {}) // payload: string
-server.emit('notify') // ✘ Notify events have no answer
+server.emit('notify', 'hi') // ✔ one-way to the publisher
+server.on('news', item => {}) // item: string
+server.emit('news', 'x') // ✘ Push events are sent by the publisher
 ```
 
 A `Call` reply is a single value — `F`'s return type. To send several fields
 back, return an object (or destructure a tuple on the listener side).
 
-`MessageEventEmitter.createSender<EventsMap>(...)` is the same as
-`new MessageEventEmitter<EventsMap>()`, and `receiver` is the same as
-`new MessageEventEmitter<EventsMap, 'receiver'>()`.
+`MessageEventEmitter.createPublisher<EventsMap>(...)` is the same as
+`new MessageEventEmitter<EventsMap>()`, and `createSubscriber` is the same as
+`new MessageEventEmitter<EventsMap, 'subscriber'>()`.
 
 ### Namespaced Events
 
@@ -171,7 +172,7 @@ back, return an object (or destructure a tuple on the listener side).
 an object with a consistent API. It is fully decoupled from the string-based API
 — both styles operate on the same listeners, and the result is cached per emitter.
 
-Event maps use the same `Call` / `Notify` / `Push` definitions as the core API.
+Event maps use the same `Call` / `Push` / `Notify` definitions as the core API.
 
 ```ts
 import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
@@ -179,13 +180,13 @@ import MessageEventEmitter, { type Call, type Notify, type Push } from 'mevem'
 type EventsMap = {
   sum: Call<(...numbers: number[]) => number>
   'get-numbers': Call<(count: number) => number[]>
-  notify: Notify<(payload: string) => void>
   news: Push<(item: string) => void>
+  notify: Notify<(payload: string) => void>
 }
 
-const client = MessageEventEmitter.createSender<EventsMap>({
-  on: fn => ws.addEventListener('message', fn),
-  post: data => ws.send(data),
+const client = MessageEventEmitter.createPublisher<EventsMap>({
+  subscribe: fn => ws.addEventListener('message', fn),
+  publish: data => ws.send(data),
   deserialize: ({ data }) => JSON.parse(data),
   serialize: JSON.stringify
 })
@@ -198,7 +199,7 @@ events.sum.on(result => {
 
 events.sum.emit(1, 2, 3)
 events['get-numbers'].emit(5)
-events.notify.emit('hi')
+events.news.emit('hi')
 
 // consistent per-event API
 const unsubscribe = events.sum.on(listener)

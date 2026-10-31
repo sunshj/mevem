@@ -9,24 +9,24 @@ type EventsMap = {
 }
 
 function createPair() {
-  const clientHandlers: Array<(data: any) => void> = []
-  const serverHandlers: Array<(data: any) => void> = []
+  const publisherHandlers: Array<(data: any) => void> = []
+  const subscriberHandlers: Array<(data: any) => void> = []
 
-  const client = MessageEventEmitter.createSender<EventsMap>({
-    on: fn => clientHandlers.push(fn),
-    post: data => serverHandlers.forEach(fn => fn(data)),
+  const publisher = MessageEventEmitter.createPublisher<EventsMap>({
+    subscribe: fn => publisherHandlers.push(fn),
+    publish: data => subscriberHandlers.forEach(fn => fn(data)),
     serialize: JSON.stringify,
     deserialize: JSON.parse
   })
 
-  const server = MessageEventEmitter.createReceiver<EventsMap>({
-    on: fn => serverHandlers.push(fn),
-    post: data => clientHandlers.forEach(fn => fn(data)),
+  const subscriber = MessageEventEmitter.createSubscriber<EventsMap>({
+    subscribe: fn => subscriberHandlers.push(fn),
+    publish: data => publisherHandlers.forEach(fn => fn(data)),
     serialize: JSON.stringify,
     deserialize: JSON.parse
   })
 
-  return { client, server }
+  return { publisher, subscriber }
 }
 
 describe('MessageEventEmitter', () => {
@@ -38,35 +38,35 @@ describe('MessageEventEmitter', () => {
     expect(fn).toHaveBeenCalledWith(1, 'a')
   })
 
-  it('bridges client and server with serialization', () => {
-    const { client, server } = createPair()
+  it('bridges publisher and subscriber with serialization', () => {
+    const { publisher, subscriber } = createPair()
     const results: number[] = []
 
-    server.on('sum', (...numbers) => {
-      server.emit(
+    subscriber.on('sum', (...numbers) => {
+      subscriber.emit(
         'sum',
         numbers.reduce((a, b) => a + b, 0)
       )
     })
-    client.on('sum', result => {
+    publisher.on('sum', result => {
       results.push(result)
     })
 
-    client.emit('sum', 1, 2, 3)
+    publisher.emit('sum', 1, 2, 3)
     expect(results).toEqual([6])
   })
 
   it('supports one-way events in both directions', () => {
-    const { client, server } = createPair()
+    const { publisher, subscriber } = createPair()
     const received: string[] = []
 
-    server.on('notify', payload => received.push(`server:${payload}`))
-    client.on('news', item => received.push(`client:${item}`))
+    subscriber.on('news', item => received.push(`subscriber:${item}`))
+    publisher.on('notify', payload => received.push(`publisher:${payload}`))
 
-    client.emit('notify', 'hi')
-    server.emit('news', 'yo')
+    publisher.emit('news', 'yo')
+    subscriber.emit('notify', 'hi')
 
-    expect(received).toEqual(['server:hi', 'client:yo'])
+    expect(received).toEqual(['subscriber:yo', 'publisher:hi'])
   })
 
   it('on returns an unsubscribe function', () => {
@@ -195,20 +195,20 @@ describe('createNamespace', () => {
     expect(viaNamespace).toHaveBeenCalledTimes(2)
   })
 
-  it('works across a bridged client/server pair', () => {
-    const { client, server } = createPair()
-    const clientEvents = MessageEventEmitter.createNamespace(client)
-    const serverEvents = MessageEventEmitter.createNamespace(server)
+  it('works across a bridged publisher/subscriber pair', () => {
+    const { publisher, subscriber } = createPair()
+    const publisherEvents = MessageEventEmitter.createNamespace(publisher)
+    const subscriberEvents = MessageEventEmitter.createNamespace(subscriber)
     const results: number[][] = []
 
-    serverEvents['get-numbers'].on(count => {
-      serverEvents['get-numbers'].emit(Array.from({ length: count }, (_, i) => i))
+    subscriberEvents['get-numbers'].on(count => {
+      subscriberEvents['get-numbers'].emit(Array.from({ length: count }, (_, i) => i))
     })
-    clientEvents['get-numbers'].on(numbers => {
+    publisherEvents['get-numbers'].on(numbers => {
       results.push(numbers)
     })
 
-    clientEvents['get-numbers'].emit(3)
+    publisherEvents['get-numbers'].emit(3)
     expect(results).toEqual([[0, 1, 2]])
   })
 
